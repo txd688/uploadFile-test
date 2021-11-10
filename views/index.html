@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>文件上传</title>
+  <link href="./css/index.css" rel="stylesheet"/>
+</head>
+<body>
+  <div>
+    <div class="upload-box">
+      <input class="imgFile" type="file" multiple="multiple" />
+      <i aria-label="图标: plus" class="anticon">
+        <svg viewBox="64 64 896 896" data-icon="plus" width="1em" height="1em" fill="currentColor" aria-hidden="true" focusable="false" class="">
+          <path d="M482 152h60q8 0 8 8v704q0 8-8 8h-60q-8 0-8-8V160q0-8 8-8z"></path><path d="M176 474h672q8 0 8 8v60q0 8-8 8H176q-8 0-8-8v-60q0-8 8-8z"></path>
+        </svg>
+      </i>
+      <div class="text">
+        Upload
+      </div>
+    </div>
+    <div class="upload-arr"></div>
+    <div style="clear: both;"></div>
+  </div>
+  <div>
+    <button id="btn">点击上传</button>
+  </div>
+</body>
+
+<script>
+  let uploadArr = [];
+  document.querySelector(".imgFile").onchange = function(){
+    [...this.files].forEach(file => {
+      let uploadObj = new UploadImg(file);
+      uploadArr.push(uploadObj);
+    });
+  }
+
+  document.getElementById('btn').onclick = function() {
+    async function queue(){
+      for(let i = 0;i < uploadArr.length;i++){
+        await uploadArr[i].uploadFile();
+      }
+    }
+    queue();
+  }
+  class UploadImg{
+    constructor(file){
+      this.file  = file;
+      this.dom = null;
+      this.createHtml();
+    }
+    // 上传文件显示在页面上
+    createHtml(){
+      // 文件转化base64
+      let fileReader = new FileReader();
+      fileReader.readAsDataURL(this.file);
+      let that = this;
+      fileReader.onload = function(){
+        let uploadDiv = document.createElement("div");
+        uploadDiv.classList.add("img-box");
+        uploadDiv.innerHTML = `
+          <img src="${fileReader.result}" />
+          <div class="progress"></div>
+        `;
+        document.querySelector('.upload-arr').appendChild(uploadDiv);
+        that.dom = uploadDiv;
+      }
+    }
+    // 上传文件
+    uploadFile(){
+      return new Promise((res, rej)=>{
+        let xhr = new XMLHttpRequest(); //实例化XMLHttpRequest 对象
+        xhr.open("post", "/upload", true); //建立异步请求
+        let form = new FormData();
+        form.append("img", this.file);
+        xhr.upload.onloadstart = function(){
+          console.log("上传开始");
+        }
+        xhr.upload.onprogress = (evt)=>{
+          console.log("数据传输中");
+          console.log("已经上传的文件大小：" + evt.loaded);
+          console.log("文件总大小" + evt.total);
+          let percent = Math.round(evt.loaded / evt.total * 100);
+          console.log(percent)
+          let progress = this.dom.querySelector(".progress");
+          progress.style.display = "block";
+          progress.style.width = percent + "%";
+          progress.innerHTML = percent + "%";
+          if(evt.loaded >= evt.total){
+            console.log("上传完成");
+            res();
+          }
+        }
+        xhr.onload = function(){
+          console.log("上传成功");
+        }
+        xhr.upload.onloadend = function(){
+            console.log("上传完成");
+        }
+        xhr.upload.onabort = function(){
+            console.log("取消上传");
+        }
+        xhr.send(form);
+      });
+    }
+  }
+</script>
+</html>
